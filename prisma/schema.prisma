@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enum para tipar as transações e evitar strings mágicas
+enum TransactionType {
+  DEPOSIT // Entrada de dinheiro (Pix)
+  CONSUMPTION // Gasto com consulta (Neocredi)
+  REFUND // Estorno (caso a consulta falhe)
+  BONUS // Crédito promocional (opcional)
+}
+
+// Enum para status do pagamento no gateway
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id         String  @id @default(uuid())
+  name       String?
+  whatsappId String  @unique // O ID que vem da Evolution API (ex: 554799999999@s.whatsapp.net)
+
+  // Saldo Cache: Atualizado via transaction atômica. 
+  // Usamos Decimal para dinheiro, nunca Float!
+
+  asaasCustomerId String? @unique
+  balance         Decimal @default(0.00) @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions  Transaction[]
+  consultations ConsultationLog[]
+  payments      Payment[]
+
+  @@map("users")
+}
+
+// A tabela mais importante: O Histórico Financeiro
+model Transaction {
+  id          String          @id @default(uuid())
+  userId      String
+  amount      Decimal         @db.Decimal(10, 2) // Valor da transação. Positivo para Depósito, Negativo para Consumo.
+  type        TransactionType
+  description String? // Ex: "Consulta CPF 123..." ou "Recarga via Pix"
+
+  // Relações opcionais para rastreabilidade
+  paymentId      String? @unique // Se foi um depósito, qual pagamento gerou?
+  consultationId String? @unique // Se foi um consumo, qual consulta gerou?
+
+  createdAt DateTime @default(now())
+
+  user         User             @relation(fields: [userId], references: [id])
+  payment      Payment?         @relation(fields: [paymentId], references: [id])
+  consultation ConsultationLog? @relation(fields: [consultationId], references: [id])
+
+  @@index([userId])
+  @@map("transactions")
+}
+
+// Registro das chamadas na Neocredi (Auditoria Técnica)
+model ConsultationLog {
+  id         String  @id @default(uuid())
+  userId     String
+  provider   String  @default("NEOCREDI") // Caso mude de fornecedor no futuro
+  endpoint   String // Qual endpoint foi chamado (ex: /cpf, /cnpj)
+  inputData  Json // O que foi enviado (ex: { cpf: "123..." })
+  outputData Json // O JSON puro que a Neocredi retornou (importante para debug)
+  cost       Decimal @db.Decimal(10, 2) // Quanto custou essa consulta específica
+
+  status       String // SUCCESS, ERROR
+  errorMessage String? // Se deu erro na API externa
+
+  createdAt DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id])
+  transaction Transaction?
+
+  @@map("consultation_logs")
+}
+
+// Controle dos pagamentos no Asaas
+model Payment {
+  id          String        @id @default(uuid())
+  userId      String
+  externalId  String        @unique // ID da cobrança no Asaas (pay_123456)
+  amount      Decimal       @db.Decimal(10, 2)
+  status      PaymentStatus @default(PENDING)
+  pixCode     String?       @db.Text // O "Copia e Cola"
+  qrCodeImage String? // URL da imagem do QR Code se precisar
+
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id])
+  transaction Transaction?
+
+  @@map("payments")
+}
