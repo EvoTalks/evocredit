@@ -6,6 +6,7 @@ const envSchema = z.object({
     .enum(["development", "test", "production"])
     .default("development"),
   API_PORT: z.coerce.number().default(3333),
+  ASAAS_API_KEY: z.string(),
 });
 
 const _env = envSchema.safeParse(process.env);
