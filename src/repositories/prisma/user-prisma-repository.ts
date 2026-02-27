@@ -8,7 +8,11 @@ export class UserPrismaRepository implements UserRepository {
     return prisma.user.create({ data });
   }
 
-  findByEmail(email: string): Promise<User | null> {
-    throw new Error('Method not implemented.');
+  async findAll(): Promise<User[]> {
+    return prisma.user.findMany();
+  }
+
+  async findByEmail(email: string): Promise<User | null> {
+    return prisma.user.findUnique({ where: { email } });
   }
 }
