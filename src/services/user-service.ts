@@ -4,10 +4,11 @@ import { AsaasClient } from '@/lib/asaas-client';
 
 interface UserServiceRequest {
   name?: string;
+  email?: string;
   whatsappId: string;
   cpfCnpj?: string;
   asaasCustomerId?: string;
-  balance: number;
+  balance?: number;
 }
 
 interface UserServiceResponse {
@@ -39,6 +40,7 @@ export class UserService {
 
     const user = await this.userRepository.create({
       ...request,
+      balance: request.balance ?? 0,
       asaasCustomerId,
     });
 

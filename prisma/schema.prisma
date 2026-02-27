@@ -32,6 +32,7 @@ enum PaymentStatus {
 model User {
   id         String  @id @default(uuid())
   name       String?
+  email      String? @unique
   whatsappId String  @unique // O ID que vem da Evolution API (ex: 554799999999@s.whatsapp.net)
   cpfCnpj    String? @unique
   // Saldo Cache: Atualizado via transaction atômica. 

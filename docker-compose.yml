@@ -6,7 +6,7 @@ services:
     ports:
       - ${POSTGRES_PORT}
     volumes:
-      - ${POSGRESDB_VOLUME_PATH}/.postgresdb-data:/var/lib/postgresql/data
+      - ${POSTGRESDB_VOLUME_PATH}/.postgresdb-data:/var/lib/postgresql/data
       - ./init-postgres/init.sh:/docker-entrypoint-initdb.d/init.sh
     networks:
       - evo-network

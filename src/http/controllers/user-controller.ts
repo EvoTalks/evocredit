@@ -7,10 +7,11 @@ import z from 'zod';
 
 const bodySchema = z.object({
   name: z.string().optional(),
+  email: z.string().email().optional(),
   whatsappId: z.string(),
   cpfCnpj: z.string(),
   asaasCustomerId: z.string().optional(),
-  balance: z.number(),
+  balance: z.number().optional().default(0),
 });
 
 export const userController = async (request: Request, response: Response) => {
