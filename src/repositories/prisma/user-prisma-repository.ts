@@ -19,4 +19,11 @@ export class UserPrismaRepository implements UserRepository {
   async findByAsaasCustomerId(asaasCustomerId: string): Promise<User | null> {
     return prisma.user.findUnique({ where: { asaasCustomerId } });
   }
+
+  async incrementBalance(userId: string, amount: number): Promise<User> {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { balance: { increment: amount } },
+    });
+  }
 }

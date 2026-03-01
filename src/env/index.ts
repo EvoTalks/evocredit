@@ -7,6 +7,7 @@ const envSchema = z.object({
     .default("development"),
   API_PORT: z.coerce.number().default(3333),
   ASAAS_API_KEY: z.string(),
+  ASAAS_WEBHOOK_TOKEN: z.string(),
 });
 
 const _env = envSchema.safeParse(process.env);

@@ -94,6 +94,17 @@ model ConsultationLog {
   @@map("consultation_logs")
 }
 
+// URLs externas que recebem notificações de eventos do sistema
+model WebhookConfig {
+  id        String   @id @default(uuid())
+  url       String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("webhook_configs")
+}
+
 // Controle dos pagamentos no Asaas
 model Payment {
   id          String        @id @default(uuid())

@@ -6,4 +6,5 @@ export interface UserRepository {
   findAll(): Promise<User[]>;
   findByEmail(email: string): Promise<User | null>;
   findByAsaasCustomerId(asaasCustomerId: string): Promise<User | null>;
+  incrementBalance(userId: string, amount: number): Promise<User>;
 }
