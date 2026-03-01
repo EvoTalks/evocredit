@@ -14,6 +14,20 @@ interface AsaasListResponse {
   data: AsaasCustomer[];
 }
 
+export interface AsaasPayment {
+  id: string;
+  customer: string;
+  value: number;
+  status: string;
+  billingType: string;
+}
+
+export interface AsaasPixQrCode {
+  encodedImage: string;
+  payload: string;
+  expirationDate: string;
+}
+
 export class AsaasClient {
   private apiKey: string;
   private baseURL = 'https://api-sandbox.asaas.com/v3';
@@ -107,5 +121,22 @@ export class AsaasClient {
     }
 
     return await this.createCustomer(data);
+  }
+
+  /**
+   * Cria uma cobrança PIX no Asaas
+   */
+  async createPayment(data: { customer: string; billingType: string; value: number; dueDate: string }): Promise<AsaasPayment> {
+    return this.request<AsaasPayment>('/payments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Obtém o QR Code PIX de uma cobrança
+   */
+  async getPixQrCode(paymentId: string): Promise<AsaasPixQrCode> {
+    return this.request<AsaasPixQrCode>(`/payments/${paymentId}/pixQrCode`);
   }
 }

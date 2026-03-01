@@ -5,4 +5,5 @@ export interface UserRepository {
   create(data: Prisma.UserCreateInput): Promise<User>;
   findAll(): Promise<User[]>;
   findByEmail(email: string): Promise<User | null>;
+  findByAsaasCustomerId(asaasCustomerId: string): Promise<User | null>;
 }
