@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import userRoute from './http/routes/user-route';
 import webhookRoute from './http/routes/webhook-route';
+import consultationRoute from './http/routes/consultation-route';
 
 dotenv.config();
 
@@ -21,5 +22,6 @@ app.use('/api', (req, res) => {
 
 app.use(userRoute);
 app.use(webhookRoute);
+app.use(consultationRoute);
 
 export default app;

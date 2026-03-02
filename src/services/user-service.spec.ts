@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { UserService } from './user-service';
-import { UserPrismaRepository } from '@/repositories/prisma/user-prisma-repository';
-import { AsaasClient } from '@/lib/asaas-client';
+import { UserPrismaRepository } from '../repositories/prisma/user-prisma-repository';
+import { AsaasClient } from '../lib/asaas-client';
 
 describe('UserService', () => {
   it('creates a user with Asaas customer id and default balance', async () => {

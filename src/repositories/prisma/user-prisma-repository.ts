@@ -16,6 +16,10 @@ export class UserPrismaRepository implements UserRepository {
     return prisma.user.findUnique({ where: { email } });
   }
 
+  async findByWhatsappId(whatsappId: string): Promise<User | null> {
+    return prisma.user.findUnique({ where: { whatsappId } });
+  }
+
   async findByAsaasCustomerId(asaasCustomerId: string): Promise<User | null> {
     return prisma.user.findUnique({ where: { asaasCustomerId } });
   }
@@ -24,6 +28,13 @@ export class UserPrismaRepository implements UserRepository {
     return prisma.user.update({
       where: { id: userId },
       data: { balance: { increment: amount } },
+    });
+  }
+
+  async decrementBalance(userId: string, amount: number): Promise<User> {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { balance: { decrement: amount } },
     });
   }
 }

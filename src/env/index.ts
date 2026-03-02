@@ -8,6 +8,9 @@ const envSchema = z.object({
   API_PORT: z.coerce.number().default(3333),
   ASAAS_API_KEY: z.string(),
   ASAAS_WEBHOOK_TOKEN: z.string(),
+  NEOCREDI_TOKEN: z.string(),
+  NEOCREDI_ANALISE_MOTOR_ID: z.string(),
+  CONSULTATION_COST: z.coerce.number().positive(),
 });
 
 const _env = envSchema.safeParse(process.env);
