@@ -35,6 +35,8 @@ export class ConfirmPaymentService {
     const webhookConfigs = await this.webhookConfigRepository.findAllActive();
 
     if (webhookConfigs.length > 0) {
+      const user = await this.userRepository.findById(payment.userId);
+
       const outgoingPayload = {
         event: 'PAYMENT_CONFIRMED',
         payment: {
@@ -43,6 +45,7 @@ export class ConfirmPaymentService {
           amount,
           status: 'PAID',
           userId: payment.userId,
+          whatsappId: user?.whatsappId ?? null,
           paidAt: confirmedAt,
         },
       };
