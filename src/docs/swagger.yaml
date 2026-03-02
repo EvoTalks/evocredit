@@ -196,6 +196,44 @@ components:
           type: string
           format: date-time
 
+    OutgoingWebhookPayload:
+      type: object
+      description: Payload enviado pelo EvoCredit para cada URL cadastrada em `/webhooks/configs` quando um pagamento é confirmado.
+      properties:
+        event:
+          type: string
+          example: "PAYMENT_CONFIRMED"
+        payment:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: ID interno do pagamento no EvoCredit
+              example: "clxyz1234abcd0010"
+            externalId:
+              type: string
+              description: ID do pagamento no Asaas
+              example: "pay_123456789"
+            amount:
+              type: number
+              example: 100.00
+            status:
+              type: string
+              example: "PAID"
+            userId:
+              type: string
+              format: uuid
+              example: "clxyz1234abcd0001"
+            whatsappId:
+              type: string
+              nullable: true
+              description: WhatsApp ID do usuário que efetuou o pagamento
+              example: "554799999999@s.whatsapp.net"
+            paidAt:
+              type: string
+              format: date-time
+
     Error:
       type: object
       required:
@@ -623,6 +661,26 @@ paths:
         - Webhooks
       summary: Cadastra um destino de webhook de saída
       operationId: createWebhookConfig
+      description: |
+        Registra uma URL que receberá um `POST` do EvoCredit sempre que um pagamento for confirmado.
+
+        **Payload enviado para a URL cadastrada:**
+        ```json
+        {
+          "event": "PAYMENT_CONFIRMED",
+          "payment": {
+            "id": "clxyz...",
+            "externalId": "pay_123456789",
+            "amount": 100.00,
+            "status": "PAID",
+            "userId": "clxyz...",
+            "whatsappId": "554799999999@s.whatsapp.net",
+            "paidAt": "2026-03-02T15:00:00.000Z"
+          }
+        }
+        ```
+
+        Ver schema: `OutgoingWebhookPayload`
       requestBody:
         required: true
         content:
