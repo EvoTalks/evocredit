@@ -1,0 +1,678 @@
+openapi: 3.0.3
+info:
+  title: EvoCredit API
+  description: API de gerenciamento de crédito financeiro integrada ao gateway de pagamento Asaas e consultas CPF/CNPJ via Neocredi.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3333
+    description: Servidor local de desenvolvimento
+
+tags:
+  - name: Health
+    description: Verificação de disponibilidade do servidor
+  - name: Usuários
+    description: Gerenciamento de usuários
+  - name: Créditos
+    description: Adição de créditos via pagamento PIX
+  - name: Consultas
+    description: Consultas de CPF/CNPJ via Neocredi
+  - name: Webhooks
+    description: Recebimento de notificações do Asaas e configuração de destinos
+
+components:
+  securitySchemes:
+    AsaasWebhookToken:
+      type: apiKey
+      in: header
+      name: asaas-access-token
+      description: Token de autenticação enviado pelo Asaas em cada chamada de webhook
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "clxyz1234abcd0001"
+        name:
+          type: string
+          nullable: true
+          example: "João Silva"
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: "joao@email.com"
+        whatsappId:
+          type: string
+          example: "554799999999@s.whatsapp.net"
+        cpfCnpj:
+          type: string
+          example: "12345678901"
+        asaasCustomerId:
+          type: string
+          nullable: true
+          example: "cus_000123456789"
+        balance:
+          type: number
+          format: decimal
+          example: 50.00
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          description: "Positivo = crédito (DEPOSIT/BONUS), negativo = débito (CONSUMPTION/REFUND)"
+          example: -5.00
+        type:
+          type: string
+          enum: [DEPOSIT, CONSUMPTION, REFUND, BONUS]
+          example: "CONSUMPTION"
+        description:
+          type: string
+          nullable: true
+          example: "Consulta CPF 12345678901"
+        paymentId:
+          type: string
+          nullable: true
+          format: uuid
+        consultationId:
+          type: string
+          nullable: true
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        externalId:
+          type: string
+          description: ID do pagamento no Asaas
+          example: "pay_123456789"
+        amount:
+          type: number
+          example: 100.00
+        status:
+          type: string
+          enum: [PENDING, PAID, FAILED, REFUNDED]
+          example: "PENDING"
+        pixCode:
+          type: string
+          nullable: true
+          description: Código PIX copia e cola
+          example: "00020126580014br.gov.bcb.pix..."
+        qrCodeImage:
+          type: string
+          nullable: true
+          description: QR Code em base64
+          example: "data:image/png;base64,iVBORw0K..."
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ConsultationLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        provider:
+          type: string
+          example: "neocredi"
+        endpoint:
+          type: string
+          example: "cpf"
+        inputData:
+          type: object
+          description: Dados enviados à API externa
+        outputData:
+          type: object
+          nullable: true
+          description: Resposta da API externa
+        cost:
+          type: number
+          example: 5.00
+        status:
+          type: string
+          enum: [PENDING, SUCCESS, ERROR]
+          example: "SUCCESS"
+        errorMessage:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    WebhookConfig:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+          example: "https://meu-sistema.com/webhook/pagamento"
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: "Internal Server Error"
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Verifica se o servidor está no ar
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Servidor disponível
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /api:
+    get:
+      tags:
+        - Health
+      summary: Mensagem de boas-vindas da API
+      operationId: apiRoot
+      responses:
+        "200":
+          description: API em execução
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Server is up and running"
+
+  /users:
+    post:
+      tags:
+        - Usuários
+      summary: Cria um novo usuário
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - whatsappId
+                - cpfCnpj
+              properties:
+                name:
+                  type: string
+                  example: "João Silva"
+                email:
+                  type: string
+                  format: email
+                  example: "joao@email.com"
+                whatsappId:
+                  type: string
+                  example: "554799999999@s.whatsapp.net"
+                cpfCnpj:
+                  type: string
+                  example: "12345678901"
+                asaasCustomerId:
+                  type: string
+                  example: "cus_000123456789"
+                balance:
+                  type: number
+                  default: 0
+                  example: 0
+      responses:
+        "201":
+          description: Usuário criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "500":
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      tags:
+        - Usuários
+      summary: Lista todos os usuários
+      operationId: listUsers
+      responses:
+        "200":
+          description: Lista de usuários
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "500":
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users/by-email:
+    get:
+      tags:
+        - Usuários
+      summary: Busca um usuário pelo e-mail
+      operationId: getUserByEmail
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+          example: "joao@email.com"
+      responses:
+        "200":
+          description: Usuário encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "User not found"
+        "500":
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users/credits:
+    post:
+      tags:
+        - Créditos
+      summary: Gera cobrança PIX para adicionar créditos ao usuário
+      operationId: addCredits
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - asaasCustomerId
+                - value
+              properties:
+                asaasCustomerId:
+                  type: string
+                  example: "cus_000123456789"
+                value:
+                  type: number
+                  minimum: 0.01
+                  example: 100.00
+      responses:
+        "201":
+          description: Cobrança PIX criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payment:
+                    $ref: "#/components/schemas/Payment"
+        "404":
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "User not found"
+        "500":
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /consultations:
+    post:
+      tags:
+        - Consultas
+      summary: Cria uma consulta de CPF ou CNPJ via Neocredi
+      operationId: createConsultation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - whatsappId
+                - type
+                - document
+                - emailSolicitante
+              properties:
+                whatsappId:
+                  type: string
+                  example: "554799999999@s.whatsapp.net"
+                type:
+                  type: string
+                  enum: [cpf, cnpj]
+                  example: "cpf"
+                document:
+                  type: string
+                  description: Número do CPF ou CNPJ (somente dígitos)
+                  example: "12345678901"
+                emailSolicitante:
+                  type: string
+                  format: email
+                  example: "solicitante@empresa.com"
+      responses:
+        "201":
+          description: Consulta criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  consultationLog:
+                    $ref: "#/components/schemas/ConsultationLog"
+        "404":
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "User not found"
+        "422":
+          description: Saldo insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Insufficient balance"
+        "500":
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      tags:
+        - Consultas
+      summary: Lista consultas de um usuário
+      operationId: listConsultations
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "clxyz1234abcd0001"
+      responses:
+        "200":
+          description: Lista de consultas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  consultationLogs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ConsultationLog"
+        "500":
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /consultations/{id}/result:
+    get:
+      tags:
+        - Consultas
+      summary: Busca o resultado de uma consulta específica
+      operationId: getConsultationResult
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "clxyz1234abcd0002"
+      responses:
+        "200":
+          description: Resultado da consulta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  consultationLog:
+                    $ref: "#/components/schemas/ConsultationLog"
+        "404":
+          description: Consulta não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Consultation not found"
+        "500":
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /webhooks/asaas:
+    post:
+      tags:
+        - Webhooks
+      summary: Recebe notificação de pagamento do Asaas
+      operationId: asaasWebhook
+      description: Endpoint chamado pelo Asaas ao confirmar um pagamento. Requer o token no header `asaas-access-token`.
+      security:
+        - AsaasWebhookToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event
+                - payment
+              properties:
+                event:
+                  type: string
+                  description: Tipo do evento enviado pelo Asaas
+                  example: "PAYMENT_CONFIRMED"
+                payment:
+                  type: object
+                  required:
+                    - id
+                  properties:
+                    id:
+                      type: string
+                      description: ID do pagamento no Asaas
+                      example: "pay_123456789"
+                    paymentDate:
+                      type: string
+                      format: date
+                      nullable: true
+                      example: "2026-03-02"
+      responses:
+        "200":
+          description: Evento processado (ou ignorado caso não seja de confirmação)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      ok:
+                        type: boolean
+                        example: true
+                  - type: object
+                    properties:
+                      ignored:
+                        type: boolean
+                        example: true
+        "401":
+          description: Token inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Unauthorized"
+        "404":
+          description: Pagamento não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: "Payment not found"
+        "502":
+          description: Falha ao entregar webhook de saída
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /webhooks/configs:
+    post:
+      tags:
+        - Webhooks
+      summary: Cadastra um destino de webhook de saída
+      operationId: createWebhookConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  example: "https://meu-sistema.com/webhook/pagamento"
+      responses:
+        "201":
+          description: Configuração criada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhookConfig:
+                    $ref: "#/components/schemas/WebhookConfig"
+        "500":
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      tags:
+        - Webhooks
+      summary: Lista destinos de webhook configurados
+      operationId: listWebhookConfigs
+      responses:
+        "200":
+          description: Lista de configurações de webhook
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhookConfigs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/WebhookConfig"
+        "500":
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
